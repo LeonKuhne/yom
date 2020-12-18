@@ -16,10 +16,13 @@ win = pyglet.window.Window(resizable=True)
 
 p1 = {'x':0.0, 'y':0.0, 'z': 0}
 p2 = {'x':0.0, 'y':0.0, 'z': 0}
+p3 = {'x':0.0, 'y':0.0, 'z': 0}
 v1x = random()+MIN_SPEED*(MAX_SPEED-MIN_SPEED)
 v1y = random()+MIN_SPEED*(MAX_SPEED-MIN_SPEED)
 v2x = random()+MIN_SPEED*(MAX_SPEED-MIN_SPEED)
 v2y = random()+MIN_SPEED*(MAX_SPEED-MIN_SPEED)
+v3x = random()+MIN_SPEED*(MAX_SPEED-MIN_SPEED)
+v3y = random()+MIN_SPEED*(MAX_SPEED-MIN_SPEED)
 
 # increment the next frame
 def update(x, y):
@@ -28,6 +31,8 @@ def update(x, y):
     p1['y'] += v1y
     p2['x'] += v2x
     p2['y'] += v2y
+    p3['x'] += v3x
+    p3['y'] += v3y
 
 # override the method that draws when the window loads
 @win.event
@@ -36,25 +41,39 @@ def on_draw():
     glClear(GL_COLOR_BUFFER_BIT)
 
     # create a line context
-    glBegin(GL_LINES)
+    #glBegin(GL_LINES)
+
+    # create a triangle context
+    glBegin(GL_TRIANGLES)
 
     x1 = abs(p1['x'] % (win.width * 2) - win.width)
     y1 = abs(p1['y'] % (win.height * 2) - win.height)
     x2 = abs(p2['x'] % (win.width * 2) - win.width)
     y2 = abs(p2['y'] % (win.height * 2) - win.height)
+    x3 = abs(p3['x'] % (win.width * 2) - win.width)
+    y3 = abs(p3['y'] % (win.height * 2) - win.height)
 
     # simulate gravity on y's
     y1 = (1-(y1/win.height) ** 2.5) * win.height
     y2 = (1-(y2/win.height) ** 2.5) * win.height
+    y3 = (1-(y3/win.height) ** 2.5) * win.height
 
     # wobble x's based on timestamp
     x1 = x1 + math.sin(time.time()*5) * WOBBLE_WIDTH
     x2 = x2 + math.cos(time.time()*5) * WOBBLE_WIDTH
+    x3 = x3 + math.cos(time.time()*5) * WOBBLE_WIDTH
 
     # create a line, x,y,z
+    #glVertex3f(x1, y1, p1['z'])
+    #glVertex3f(x2, y2, p2['z'])
+
+    # create a traingle
     glVertex3f(x1, y1, p1['z'])
     glVertex3f(x2, y2, p2['z'])
-    glVertex3f(0, 0, 0)
+    glVertex3f(x3, y3, p3['z'])
+
+   
+
 
     glEnd()
 
