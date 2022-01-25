@@ -14,7 +14,8 @@ UPDATE_INTERVAL = 1/30 # in seconds
 display = Display()
 
 # create a window
-count = int(random() * 3) + 1
+#count = int(random() * 3) + 1
+count = 1
 for idx in range(count):
     x = display.win.width / (count+1) * (idx+1)
     y = display.win.height / 2
