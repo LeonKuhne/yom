@@ -29,6 +29,7 @@ def update(x, y):
     p2['x'] += v2x
     p2['y'] += v2y
 
+
 # override the method that draws when the window loads
 @win.event
 def on_draw():
@@ -54,7 +55,6 @@ def on_draw():
     # create a line, x,y,z
     glVertex3f(x1, y1, p1['z'])
     glVertex3f(x2, y2, p2['z'])
-    glVertex3f(0, 0, 0)
 
     glEnd()
 
