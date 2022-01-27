@@ -15,7 +15,7 @@ display = Display()
 
 # create a window
 #count = int(random() * 3) + 1
-count = 1
+count = 2
 for idx in range(count):
     x = display.win.width / (count+1) * (idx+1)
     y = display.win.height / 2
@@ -27,7 +27,7 @@ def on_draw():
     glBegin(GL_TRIANGLES)
     Drawable.draw_all()
     glEnd()
-    #time.sleep(.1)
+    time.sleep(.05)
 
 # run
 pyglet.clock.schedule(Drawable.update_all, UPDATE_INTERVAL)

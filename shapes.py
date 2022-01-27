@@ -30,8 +30,8 @@ class Point:
         self.vel_y = MIN_VELOCITY + (random() * 2 - 1) * (self.max_speed-MIN_VELOCITY) * (-1 if random() >= .5 else 1)
         self.effects = []
 
-    def accel_x(self, acc_x):
-        self.vel_x *= acc_x
+    def accel_x(self, vel_x):
+        self.vel_x = vel_x
         if abs(self.vel_x) < MIN_VELOCITY:
             self.vel_x = (MIN_VELOCITY + random()/5) * (-1 if random() >= .5 else 1)
         elif self.vel_x < 0:
@@ -39,37 +39,38 @@ class Point:
         else:
             self.vel_x = min(self.vel_x, self.max_speed)
     
-    def accel_y(self, acc_y):
-        self.vel_y *= acc_y
+    def accel_y(self, vel_y):
+        self.vel_y = vel_y
         if abs(self.vel_y) < MIN_VELOCITY:
             self.vel_y = (MIN_VELOCITY + random()/5) * (1 + random()) * (-1 if random() >= .5 else 1)
         elif self.vel_y < 0:
-            self.vel_y = -min(abs(self.vel_y), self.max_speed)
+            self.vel_y = -min(self.vel_y, self.max_speed)
         else:
             self.vel_y = min(self.vel_y, self.max_speed)
 
     def move_x(self):
         self.x += self.vel_x
-
         if self.x < 0 or self.x > self.win.width:
-            self.accel_x(-1 - (random())/10)
-            self.move_x()
+            self.fix_x()
 
     def move_y(self):
         self.y += self.vel_y
-
         if self.y < 0 or self.y > self.win.height:
-            self.accel_y(-1 - (random())/10)
-            self.move_y()
+            self.fix_y()
+
+    def fix_x(self):
+        self.accel_x(-self.vel_x *(1+random()/10))
+        self.move_x()
+
+    def fix_y(self):
+        self.accel_y(-self.vel_y *(1+random()/10))
+        self.move_y()
 
     def fix(self):
-        accel = 1.0 + random()/10
         if random() >= 0.5:
-            self.accel_x(accel)
-            self.move_x()
+            self.fix_x()
         else:
-            self.accel_y(accel)
-            self.move_y()
+            self.fix_y()
 
     def update(self, shape_id):
         # apply velocities
@@ -77,31 +78,30 @@ class Point:
         self.move_y()
 
         # check for collision
-        other_drawable = Drawable.has_collision(self, shape_id)
+        (other_drawable, tangent) = Drawable.has_collision(self, shape_id)
         if other_drawable:
             print("detected collision")
-            # accelerate the point in the opposite direction
-            self.accel_x(-1)
-            self.accel_y(-1)
+
+            # find the point's triangle's mass
+            drawable = Drawable.get(shape_id)
+            mass = drawable.area() / other_drawable.area()
 
             # unstick
-            while Drawable.has_collision(self, shape_id):
+            #while Drawable.has_collision(self, shape_id):
+
                 # revert
-                self.fix()
+                #self.fix()
 
                 # shrink
                 #drawable.shrink()
 
-            # find the point's triangle's mass
-            drawable = Drawable.get(shape_id)
-            mass = drawable.area() / other_drawable.area() * MASS_FACTOR
-
-            # reverse the direction of the hit triangle
-            self.accel_x(-mass + random() - 0.5)
-            self.accel_y(-mass + random() - 0.5)
-
-            # bounce the drawable
-            drawable.accel(-mass * BOOM_FACTOR * (1 + (random() - .5)/10))
+            # accelerate in opposite directions
+            other_vel_x = other_drawable.vel_x()
+            other_vel_y = other_drawable.vel_y()
+            drawable.accel(other_vel_x * 1/mass, other_vel_y* 1/mass)
+            drawable.accel(other_vel_x * 1/mass, other_vel_y* 1/mass)
+            other_drawable.accel(self.vel_x * mass, self.vel_y * mass)
+            other_drawable.accel(self.vel_x * mass, self.vel_y * mass)
 
     def shader(self):
         (x, y, z) = (self.x, self.y, self.z)
@@ -115,6 +115,46 @@ class Point:
     # add effects to run on update
     def add_effect(self, *effects):
         self.effects += effects
+
+class Line(Drawable):
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+
+    def slope(self):
+        return (self.end.y - self.start.y) / (self.end.x - self.start.x)
+
+    def intercept_y(self):
+        return self.start.y - self.slope() * self.start.x
+
+    def intersection_x(self, other):
+        slope = self.slope()
+        other_slope = other.slope()
+
+        # check if parallel
+        if slope == other_slope:
+            return None
+
+        return (self.intercept_y() - other.intercept_y()) / (other_slope - slope)
+
+    def x_in_range(self, x):
+        min_x = min(self.start.x, self.end.x)
+        max_x = max(self.start.x, self.end.x)
+        return min_x < x and x < max_x
+        
+
+    def collision(self, other_line):
+        coll_x = self.intersection_x(other_line)
+
+        # lines are parallel
+        if coll_x == None:
+            return False
+
+        # check if lines extend to intersection
+        return self.x_in_range(coll_x) and other_line.x_in_range(coll_x)
+
+    def has(self, point):
+        return point == self.start or point == self.end
 
 class Triangle(Drawable):
 
@@ -174,49 +214,27 @@ class Triangle(Drawable):
     def vel_y(self):
         return sum([point.vel_y for point in self.points]) / len(self.points)
 
-    def slope(point_a, point_b):
-        return (point_a.y - point_b.y) / (point_a.x - point_b.x)
-
-    def line_collision(p1, p2, o1, o2):
-        slope = Triangle.slope(p1, p2)
-        intercept_y = p1.y - slope * p1.x
-
-        other_slope = Triangle.slope(o1, o2)
-        other_intercept_y = o1.y - other_slope * o1.x
-
-        # calculate where the lines intersect
-        if other_slope == slope:
-            return False
-        intercept_x = (intercept_y - other_intercept_y) / (other_slope - slope)
-
-        # check if the intersection is drawn
-        return (min(abs(p1.x), abs(p2.x)) < abs(intercept_x)
-        and max(abs(p1.x), abs(p2.x)) > abs(intercept_x)
-        and min(abs(o1.x), abs(o2.x)) < abs(intercept_x)
-        and max(abs(o1.x), abs(o2.x)) > abs(intercept_x))
+    def lines(self, condition=lambda line: True):
+        lines = []
+        for idx in range(len(self.points)):
+            next_idx = (idx + 1) % len(self.points)
+            line = Line(self.points[idx], self.points[next_idx])
+            if condition(line):
+                lines.append(line)
+        return lines
 
     def check_collision(self, point, drawable):
-        # check if the lines intersect
-        idx = self.points.index(point)
-        points = self.points[:idx] + self.points[idx+1:]
+        # go through this triangles lines that include the point
+        for line in self.lines(lambda line: line.has(point)):
+            
+            # check for collisions with the other triangles lines
+            for other_line in drawable.lines():
+                if line.collision(other_line):
 
-        for point_idx in range(len(points)):
-            next_idx = (point_idx + 1) % len(points)
-            point_a = points[point_idx]
-            point_b = points[next_idx]
 
-            if point.id == point_a.id:
-                return False
+                    return 0 # TODO return the tangent
 
-            for other_idx in range(len(drawable.points)):
-                other_next_idx = (other_idx + 1) % len(drawable.points)
-
-                other_point_a = drawable.points[other_idx]
-                other_point_b = drawable.points[other_next_idx]
-                
-                if Triangle.line_collision(point_a, point_b, other_point_a, other_point_b):
-                    return True
-        return False
+        return None
 
     def shrink(self):
         (total_x, total_y) = (0, 0)
@@ -230,7 +248,7 @@ class Triangle(Drawable):
             point.x += diff_x * (SHRINK_SPEED/1000)
             point.y += diff_y * (SHRINK_SPEED/1000)
 
-    def accel(self, accel):
+    def accel(self, accel_x, accel_y):
         for point in self.points:
-            point.accel_x(accel)
-            point.accel_y(accel)
+            point.accel_x(accel_x)
+            point.accel_y(accel_y)

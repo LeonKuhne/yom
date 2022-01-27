@@ -32,8 +32,9 @@ class Drawable:
         drawable = Drawable.get(shape_id)
         for other_drawable in DRAWABLES:
             if other_drawable.id != drawable.id:
-                if drawable.check_collision(point, other_drawable):
-                    return other_drawable
+                tangent = drawable.check_collision(point, other_drawable):
+                    if tangent != None:
+                        return other_drawable, tangent
         return None
 
     def draw_all():
