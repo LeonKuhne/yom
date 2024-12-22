@@ -8,10 +8,10 @@ import pygame
 import sys
 
 FPS = 120 
-MAX_SPEED = 8
+MAX_SPEED = 6
 MIN_SPEED = 1
 WOBBLE_WIDTH = 30
-COLOR_SPEED = 0.005
+COLOR_SPEED = 0.001
 
 vertex_shader='''
   #version 330
@@ -65,7 +65,7 @@ class Yom():
     self.ctx = moderngl.get_context()
     _, _, width, height = self.ctx.viewport
 
-    #self.ctx.clear(0,0,0)
+    self.ctx.clear(0,0,0)
 
     self.p1['x'] += self.v1['x']
     self.p1['y'] += self.v1['y']
@@ -115,9 +115,9 @@ def run():
         and (event.key == pygame.K_q
           or event.key == pygame.K_ESCAPE)
       ): running = False
-      # clear screen
+      # reset
       if (event.type == pygame.KEYDOWN and event.key == pygame.K_r):
-        yom.ctx.clear(0,0,0)
+        yom = Yom()
 
     # render
     yom.draw()
