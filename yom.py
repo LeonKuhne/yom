@@ -108,11 +108,16 @@ def run():
   running = True
   while running:
     for event in pygame.event.get():
+      # exit
       if (event.type == pygame.QUIT
         or event.type == pygame.KEYDOWN
         and (event.key == pygame.K_q
           or event.key == pygame.K_ESCAPE)
       ): running = False
+      # clear screen
+      if (event.type == pygame.KEYDOWN and event.key == pygame.K_r):
+        yom.ctx.clear(0,0,0)
+
     # render
     yom.draw()
     pygame.display.flip()

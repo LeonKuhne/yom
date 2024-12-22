@@ -2,5 +2,5 @@
 
 help .cd | indent
 function run() {
-  python yom.py
+  nohup python yom.py &
 }
