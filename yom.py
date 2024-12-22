@@ -62,6 +62,7 @@ class Yom():
         self.program, self.vbo, 'in_vert')
 
   def draw(self):
+    self.ctx = moderngl.get_context()
     _, _, width, height = self.ctx.viewport
 
     #self.ctx.clear(0,0,0)
