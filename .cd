@@ -1,6 +1,6 @@
 #!/bin/bash
 
 help .cd | indent
-function start() {
+function run() {
   python yom.py
 }

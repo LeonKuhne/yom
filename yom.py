@@ -1,64 +1,125 @@
 #!/bin/python
-
 from random import random
 import time
-import pyglet
-from pyglet.gl import *
+import moderngl
+import numpy as np
 import math
+import pygame
+import sys
 
-UPDATE_INTERVAL = 1/30 # in seconds
+FPS = 120 
 MAX_SPEED = 8
 MIN_SPEED = 1
 WOBBLE_WIDTH = 30
+COLOR_SPEED = 0.005
 
-# create a window
-win = pyglet.window.Window(resizable=True)
+vertex_shader='''
+  #version 330
 
-p1 = {'x':0.0, 'y':0.0, 'z': 0}
-p2 = {'x':0.0, 'y':0.0, 'z': 0}
-v1x = random()+MIN_SPEED*(MAX_SPEED-MIN_SPEED)
-v1y = random()+MIN_SPEED*(MAX_SPEED-MIN_SPEED)
-v2x = random()+MIN_SPEED*(MAX_SPEED-MIN_SPEED)
-v2y = random()+MIN_SPEED*(MAX_SPEED-MIN_SPEED)
+  in vec2 in_vert;
 
-# increment the next frame
-def update(x, y):
-    global p1, p2
-    p1['x'] += v1x
-    p1['y'] += v1y
-    p2['x'] += v2x
-    p2['y'] += v2y
+  void main() {
+    gl_Position = vec4(in_vert, 0.0, 1.0);
+  }
+'''
+fragment_shader='''
+  #version 330
 
+  uniform float time;
+  out vec4 color;
 
-# override the method that draws when the window loads
-@win.event
-def on_draw():
-    # clear the screen
-    glClear(GL_COLOR_BUFFER_BIT)
+  void main() {
+    color = vec4(
+        0.5 + 0.5 * sin(time * 1.28 + 27.37),
+        0.5 + 0.5 * sin(time * 1.56 + 77.25),
+        0.5 + 0.5 * sin(time * 1.14 + 252.12),
+        1.0
+    );
+  }
+'''
 
-    # create a line context
-    glBegin(GL_LINES)
+class Yom():
+  def __init__(self):
+    self.start_time = time.time()
+    self.ctx = moderngl.get_context()
+    self.program = self.ctx.program(
+        vertex_shader=vertex_shader, fragment_shader=fragment_shader)
+    _, _, width, height = self.ctx.viewport
+    self.p1 = { 'x': random()*width, 'y': random()*height }
+    self.p2 = { 'x': random()*width, 'y': random()*height }
+    self.v1 = {
+      'x': random()*MIN_SPEED*(MAX_SPEED-MIN_SPEED), 
+      'y': random()*MIN_SPEED*(MAX_SPEED-MIN_SPEED)}
+    self.v2 = {
+      'x': random()*MIN_SPEED*(MAX_SPEED-MIN_SPEED), 
+      'y': random()*MIN_SPEED*(MAX_SPEED-MIN_SPEED)}
+    vertices = np.array([
+      self.p1['x'], self.p1['y'],
+      self.p2['x'], self.p2['y']
+    ], dtype='f4')
+    self.vbo = self.ctx.buffer(vertices.tobytes())
+    self.vao = self.ctx.simple_vertex_array(
+        self.program, self.vbo, 'in_vert')
 
-    x1 = abs(p1['x'] % (win.width * 2) - win.width)
-    y1 = abs(p1['y'] % (win.height * 2) - win.height)
-    x2 = abs(p2['x'] % (win.width * 2) - win.width)
-    y2 = abs(p2['y'] % (win.height * 2) - win.height)
+  def draw(self):
+    _, _, width, height = self.ctx.viewport
+
+    #self.ctx.clear(0,0,0)
+
+    self.p1['x'] += self.v1['x']
+    self.p1['y'] += self.v1['y']
+    self.p2['x'] += self.v2['x']
+    self.p2['y'] += self.v2['y']
+
+    x1 = abs(self.p1['x'] % (width * 2) - width)
+    y1 = abs(self.p1['y'] % (height * 2) - height)
+    x2 = abs(self.p2['x'] % (width * 2) - width)
+    y2 = abs(self.p2['y'] % (height * 2) - height)
 
     # simulate gravity on y's
-    y1 = (1-(y1/win.height) ** 2.5) * win.height
-    y2 = (1-(y2/win.height) ** 2.5) * win.height
+    y1 = (1-(y1/height) ** 2.5) * height
+    y2 = (1-(y2/height) ** 2.5) * height
 
     # wobble x's based on timestamp
-    x1 = x1 + math.sin(time.time()*5) * WOBBLE_WIDTH
-    x2 = x2 + math.cos(time.time()*5) * WOBBLE_WIDTH
+    timestep = (time.time()*5) % 2**24
+    x1 += math.sin(timestep) * WOBBLE_WIDTH
+    x2 += math.cos(timestep) * WOBBLE_WIDTH
+    self.program['time'].value = timestep * COLOR_SPEED 
+
+    # scale down
+    x1 = x1 / width * 2 - 1
+    y1 = y1 / height * 2 - 1
+    x2 = x2 / width * 2 - 1
+    y2 = y2 / height * 2 - 1
 
     # create a line, x,y,z
-    glVertex3f(x1, y1, p1['z'])
-    glVertex3f(x2, y2, p2['z'])
-
-    glEnd()
+    self.vbo.write(np.array([x1, y1, x2, y2], dtype='f4'))
+    self.vao.render(moderngl.LINES)
 
 # run
-glColor4f(random(), random(), random(), 1)
-pyglet.clock.schedule(update, UPDATE_INTERVAL)
-pyglet.app.run()
+def run():
+  pygame.init()
+  pygame.display.set_mode((800, 800), flags=pygame.OPENGL | pygame.DOUBLEBUF, vsync=True)
+  pygame.display.set_caption('yom - bouncing line wallpaper')
+  clock = pygame.time.Clock()
+
+  yom = Yom()
+
+  running = True
+  while running:
+    for event in pygame.event.get():
+      if (event.type == pygame.QUIT
+        or event.type == pygame.KEYDOWN
+        and (event.key == pygame.K_q
+          or event.key == pygame.K_ESCAPE)
+      ): running = False
+    # render
+    yom.draw()
+    pygame.display.flip()
+    clock.tick(FPS)
+
+  pygame.quit()
+  sys.exit()
+
+if __name__ == '__main__':
+  run()
