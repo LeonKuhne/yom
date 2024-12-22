@@ -1,4 +1,6 @@
-echo "[start]"
-function start
-  nohup python __main__.py & exit
-end
+#!/bin/bash
+
+help .cd | indent
+function start() {
+  python yom.py
+}
