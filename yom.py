@@ -9,9 +9,10 @@ import sys
 
 FPS = 120 
 MAX_SPEED = 6
-MIN_SPEED = 1
-WOBBLE_WIDTH = 30
+MIN_SPEED = 2
+WOBBLE_WIDTH = 10
 COLOR_SPEED = 0.001
+GRAVITY_STRENGTH = 2
 
 vertex_shader='''
   #version 330
@@ -26,13 +27,14 @@ fragment_shader='''
   #version 330
 
   uniform float time;
+  uniform float seed;
   out vec4 color;
 
   void main() {
     color = vec4(
-        0.5 + 0.5 * sin(time * 1.28 + 27.37),
-        0.5 + 0.5 * sin(time * 1.56 + 77.25),
-        0.5 + 0.5 * sin(time * 1.14 + 252.12),
+        0.5 + 0.5 * sin((time * 1.28 + 27.37)*seed),
+        0.5 + 0.5 * sin((time * 1.56 + 77.25)*seed),
+        0.5 + 0.5 * sin((time * 1.14 + 252.12)*seed),
         1.0
     );
   }
@@ -40,7 +42,6 @@ fragment_shader='''
 
 class Yom():
   def __init__(self):
-    self.start_time = time.time()
     self.ctx = moderngl.get_context()
     self.program = self.ctx.program(
         vertex_shader=vertex_shader, fragment_shader=fragment_shader)
@@ -60,6 +61,9 @@ class Yom():
     self.vbo = self.ctx.buffer(vertices.tobytes())
     self.vao = self.ctx.simple_vertex_array(
         self.program, self.vbo, 'in_vert')
+    self.ctx.line_width = 5
+    self.start_time = time.time()
+    self.color_seed = random()
 
   def draw(self):
     self.ctx = moderngl.get_context()
@@ -78,14 +82,15 @@ class Yom():
     y2 = abs(self.p2['y'] % (height * 2) - height)
 
     # simulate gravity on y's
-    y1 = (1-(y1/height) ** 2.5) * height
-    y2 = (1-(y2/height) ** 2.5) * height
+    y1 = (1-(y1/height) ** GRAVITY_STRENGTH) * height
+    y2 = (1-(y2/height) ** GRAVITY_STRENGTH) * height
 
     # wobble x's based on timestamp
     timestep = (time.time()*5) % 2**24
     x1 += math.sin(timestep) * WOBBLE_WIDTH
     x2 += math.cos(timestep) * WOBBLE_WIDTH
     self.program['time'].value = timestep * COLOR_SPEED 
+    self.program['seed'].value = self.color_seed
 
     # scale down
     x1 = x1 / width * 2 - 1
@@ -100,7 +105,9 @@ class Yom():
 # run
 def run():
   pygame.init()
-  pygame.display.set_mode((800, 800), flags=pygame.OPENGL | pygame.DOUBLEBUF, vsync=True)
+  pygame.display.set_mode(
+    (800, 800), vsync=True,
+    flags=pygame.OPENGL | pygame.DOUBLEBUF | pygame.NOFRAME | pygame.RESIZABLE)
   pygame.display.set_caption('yom - bouncing line wallpaper')
   clock = pygame.time.Clock()
 

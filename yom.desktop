@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=yom
+Exec=/home/die/.pyenv/bin/python /home/die/Projects/yom/yom.py
+Type=Application
+Terminal=false

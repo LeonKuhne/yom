@@ -4,3 +4,7 @@ help .cd | indent
 function run() {
   nohup python yom.py &
 }
+
+function publish() {
+  cp yom.desktop ~/.local/share/applications
+}
