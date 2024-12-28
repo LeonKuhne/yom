@@ -11,3 +11,7 @@ ln -s $(pwd)/yom.py /usr/local/bin/yom
 ```
 yom
 ```
+
+# todo
+Use predefined edge intersection locations and timings to sync up horizontal and vertically colisions 
+  - ie hit both top/bot and right/left at same time at inverse locations, using unique math equations for each
